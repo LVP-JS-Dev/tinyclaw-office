@@ -29,6 +29,7 @@ from src.tinyclaw_integration.models import (
     AgentTeam,
     Channel,
     CreateAgentRequest,
+    UpdateAgentRequest,
     CreateMessageRequest,
     CreateTeamRequest,
     AgentListResponse,
@@ -302,20 +303,14 @@ async def create_agent(request: CreateAgentRequest):
 @app.patch("/api/agents/{agent_id}", response_model=Agent, dependencies=[Depends(verify_api_key_optional)])
 async def update_agent(
     agent_id: str,
-    name: str | None = None,
-    description: str | None = None,
-    status: AgentStatus | None = None,
-    channels: list[str] | None = None,
+    request: UpdateAgentRequest,
 ):
     """
     Update an existing agent.
 
     Args:
         agent_id: Unique identifier of the agent
-        name: New name for the agent
-        description: New description for the agent
-        status: New status for the agent
-        channels: New list of channel IDs
+        request: Agent update request body
 
     Returns:
         Updated Agent object
@@ -324,10 +319,13 @@ async def update_agent(
         client = get_tinyclaw_client()
         return await client.update_agent(
             agent_id=agent_id,
-            name=name,
-            description=description,
-            status=status,
-            channels=channels,
+            name=request.name,
+            description=request.description,
+            agent_status=request.agent_status,
+            channels=request.channels,
+            capabilities=request.capabilities,
+            config=request.config,
+            team_id=request.team_id,
         )
     except ValidationError as e:
         raise HTTPException(status_code=e.status_code, detail=e.to_dict())
@@ -532,7 +530,7 @@ async def create_team(request: CreateTeamRequest):
 @app.get("/api/channels", response_model=list[Channel], dependencies=[Depends(verify_api_key_optional)])
 async def list_channels(
     channel_type: ChannelType | None = None,
-    status: ChannelStatus | None = None,
+    channel_status: ChannelStatus | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -541,7 +539,7 @@ async def list_channels(
 
     Args:
         channel_type: Filter by channel type
-        status: Filter by connection status
+        channel_status: Filter by connection status
         limit: Maximum number of channels to return
         offset: Number of channels to skip
 
@@ -552,7 +550,7 @@ async def list_channels(
         client = get_tinyclaw_client()
         return await client.list_channels(
             channel_type=channel_type,
-            status=status,
+            status=channel_status,
             limit=limit,
             offset=offset,
         )

@@ -410,6 +410,27 @@ class CreateAgentRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class UpdateAgentRequest(BaseModel):
+    """Request model for updating an existing agent."""
+
+    name: str | None = Field(default=None, description="Agent name")
+    description: str | None = Field(default=None, description="Agent description")
+    agent_status: AgentStatus | None = Field(
+        default=None,
+        alias="status",
+        description="Agent operational status"
+    )
+    channels: list[str] | None = Field(default=None, description="Channel IDs to connect")
+    capabilities: list[AgentCapability] | None = Field(
+        default=None,
+        description="Agent capabilities"
+    )
+    config: dict[str, Any] | None = Field(default=None, description="Agent configuration")
+    team_id: str | None = Field(default=None, description="Team ID to assign agent to")
+
+    model_config = {"populate_by_name": True}
+
+
 class CreateMessageRequest(BaseModel):
     """Request model for sending a message."""
 
@@ -486,6 +507,7 @@ __all__ = [
     "RoutingConfig",
     # Request/Response
     "CreateAgentRequest",
+    "UpdateAgentRequest",
     "CreateMessageRequest",
     "CreateTeamRequest",
     "AgentListResponse",
