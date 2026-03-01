@@ -310,7 +310,7 @@ export class SandboxManager {
     const startTime = Date.now();
 
     this.logger.info("Executing command", {
-      command,
+      commandLength: command.length,
       timeout,
       cwd: options.cwd,
       throwOnError: options.throwOnError ?? true,
@@ -336,7 +336,7 @@ export class SandboxManager {
 
       // Log result
       this.logger.info("Command completed", {
-        command,
+        commandLength: command.length,
         exitCode: executionResult.exitCode,
         duration,
         timedOut: executionResult.timedOut,
@@ -347,7 +347,7 @@ export class SandboxManager {
       // Check for error conditions
       if (executionResult.timedOut) {
         const timeoutError = new TimeoutError("Command timed out", {
-          command,
+          commandLength: command.length,
           timeout,
           duration,
         });
@@ -358,7 +358,7 @@ export class SandboxManager {
 
       if (executionResult.exitCode !== 0 && (options.throwOnError ?? true)) {
         throw new ExecutionError("Command failed with non-zero exit code", {
-          command,
+          commandLength: command.length,
           exitCode: executionResult.exitCode,
           stderr: executionResult.stderr,
         });
@@ -372,13 +372,13 @@ export class SandboxManager {
 
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error("Command execution failed", {
-        command,
+        commandLength: command.length,
         error: message,
         duration: Date.now() - startTime,
       });
 
       throw new ExecutionError("Command execution failed", {
-        command,
+        commandLength: command.length,
         originalError: message,
       });
     }
@@ -513,7 +513,7 @@ export class SandboxManager {
       // Stop if a command failed and throwOnError is true
       if (result.exitCode !== 0 && (options.throwOnError ?? true)) {
         this.logger.warn("Batch execution stopped due to error", {
-          command,
+          commandLength: command.length,
           exitCode: result.exitCode,
         });
         break;
