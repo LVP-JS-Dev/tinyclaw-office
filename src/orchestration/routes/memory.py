@@ -8,7 +8,7 @@ including storing, retrieving, and listing memories with semantic search capabil
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, Field
 
 from src.shared.auth import verify_api_key
@@ -33,8 +33,8 @@ logger = get_logger(__name__)
 
 # The router will be initialized with coordinator dependency
 router = APIRouter(
-    prefix="/api/memory",
-    tags=["memory"],
+    prefix="/api/memories",
+    tags=["memories"],
 )
 
 
@@ -42,18 +42,20 @@ router = APIRouter(
 # Dependencies
 # ------------------------------------------------------------------------------
 
-async def get_coordinator():
+async def get_coordinator(request: Request):
     """
-    Dependency to get the service coordinator.
+    Dependency to get the service coordinator from the app state.
 
-    In a real implementation, this would be injected from the main app state.
-    For now, this is a placeholder that will be replaced by the actual dependency.
+    The coordinator is initialized during application startup and stored
+    in the FastAPI app.state for dependency injection.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        ServiceCoordinator instance from app.state
     """
-    from src.orchestration.coordinator import ServiceCoordinator
-
-    # This will be replaced by FastAPI's dependency injection system
-    # when the router is mounted in the main API
-    return None
+    return request.app.state.coordinator
 
 
 # ------------------------------------------------------------------------------
@@ -134,7 +136,7 @@ class MemoryResponse(BaseModel):
         default_factory=list,
         description="List of category IDs"
     )
-    status: str = Field(default="active", description="Memory status")
+    memory_status: str = Field(default="active", description="Memory status")
     created_at: str = Field(..., description="Memory creation timestamp")
     updated_at: str = Field(..., description="Memory last update timestamp")
 
