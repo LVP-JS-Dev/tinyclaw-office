@@ -12,6 +12,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -165,8 +166,10 @@ class AgentResponse(BaseModel):
     description="Retrieve a list of all agents in the system with optional filtering",
     responses={
         200: {"description": "Agents retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def list_agents(
     status_filter: AgentStatus | None = None,
@@ -258,8 +261,10 @@ async def list_agents(
     responses={
         201: {"description": "Agent created successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def create_agent(
     request: CreateAgentRequestAPI,
@@ -336,9 +341,11 @@ async def create_agent(
     description="Retrieve detailed information about a specific agent",
     responses={
         200: {"description": "Agent retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def get_agent(
     agent_id: str,
@@ -406,9 +413,11 @@ async def get_agent(
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {"description": "Agent deleted successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def delete_agent(
     agent_id: str,
@@ -472,9 +481,11 @@ async def delete_agent(
     responses={
         200: {"description": "Message sent successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent or channel not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def send_message(
     agent_id: str,

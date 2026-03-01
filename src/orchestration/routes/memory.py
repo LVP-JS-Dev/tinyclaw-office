@@ -11,6 +11,7 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -170,8 +171,10 @@ class MemoryRetrieveResponse(BaseModel):
     responses={
         201: {"description": "Memory stored successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def store_memory(
     request: StoreMemoryRequestAPI,
@@ -263,8 +266,10 @@ async def store_memory(
     responses={
         200: {"description": "Memories retrieved successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def retrieve_memories(
     request: RetrieveMemoryRequestAPI,
@@ -355,9 +360,11 @@ async def retrieve_memories(
     responses={
         200: {"description": "Memories listed successfully"},
         400: {"description": "Invalid agent ID"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def list_agent_memories(
     agent_id: str,

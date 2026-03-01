@@ -12,6 +12,7 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -163,8 +164,10 @@ class ExecutionStatusResponse(BaseModel):
     responses={
         201: {"description": "Execution task created successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "Gondolin service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def execute_code(
     request: ExecuteCodeRequest,
@@ -264,9 +267,11 @@ async def execute_code(
     description="Retrieve the status and results of an execution task",
     responses={
         200: {"description": "Execution status retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Task not found"},
         503: {"description": "Gondolin service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def get_execution_status(
     task_id: str,

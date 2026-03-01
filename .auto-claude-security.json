@@ -127,11 +127,28 @@
     "zip",
     "zsh"
   ],
-  "stack_commands": [],
+  "stack_commands": [
+    "ipython",
+    "jupyter",
+    "notebook",
+    "pdb",
+    "pip",
+    "pip3",
+    "pipx",
+    "pudb",
+    "python",
+    "python3",
+    "ts-node",
+    "tsc",
+    "tsx"
+  ],
   "script_commands": [],
   "custom_commands": [],
   "detected_stack": {
-    "languages": [],
+    "languages": [
+      "python",
+      "typescript"
+    ],
     "package_managers": [],
     "frameworks": [],
     "databases": [],
@@ -148,7 +165,7 @@
     "shell_scripts": []
   },
   "project_dir": "/Users/leonidpetrov/Projects/tinyclaw-office",
-  "created_at": "2026-03-01T17:08:51.169408",
-  "project_hash": "bcb4ffb76ae76334a1a93ffb2de7ee33",
+  "created_at": "2026-03-01T23:34:00.599017",
+  "project_hash": "9dc0b6782005400589bffaea8f81245f",
   "inherited_from": "/Users/leonidpetrov/Projects/tinyclaw-office"
 }
