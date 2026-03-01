@@ -323,9 +323,7 @@ class MemoryQuery(BaseModel):
     @field_validator("queries")
     @classmethod
     def validate_queries(cls, v: list[str]) -> list[str]:
-        """Validate that queries list is not empty."""
-        if not v or len(v) == 0:
-            raise ValueError("At least one query is required")
+        """Validate and normalize queries list (allows empty list)."""
         return [q.strip() for q in v if q.strip()]
 
 
