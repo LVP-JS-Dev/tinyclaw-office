@@ -223,7 +223,7 @@ async def list_agents(
             params["team_id"] = team_id
 
         # Make request to TinyClaw service
-        response = await coordinator.request_tinyclaw("GET", "/agents", params=params)
+        response = await coordinator.request_tinyclaw("GET", "/api/agents", params=params)
 
         logger.info("Agents listed successfully", extra={
             "count": len(response.get("agents", [])),
@@ -303,7 +303,7 @@ async def create_agent(
         # Make request to TinyClaw service
         response = await coordinator.request_tinyclaw(
             "POST",
-            "/agents",
+            "/api/agents",
             json=create_request.model_dump(exclude_none=True, by_alias=True)
         )
 
@@ -372,7 +372,7 @@ async def get_agent(
         logger.info("Getting agent", extra={"agent_id": agent_id})
 
         # Make request to TinyClaw service
-        response = await coordinator.request_tinyclaw("GET", f"/agents/{agent_id}")
+        response = await coordinator.request_tinyclaw("GET", f"/api/agents/{agent_id}")
 
         logger.info("Agent retrieved successfully", extra={"agent_id": agent_id})
 
@@ -441,7 +441,7 @@ async def delete_agent(
         logger.info("Deleting agent", extra={"agent_id": agent_id})
 
         # Make request to TinyClaw service
-        await coordinator.request_tinyclaw("DELETE", f"/agents/{agent_id}")
+        await coordinator.request_tinyclaw("DELETE", f"/api/agents/{agent_id}")
 
         logger.info("Agent deleted successfully", extra={"agent_id": agent_id})
 
@@ -534,7 +534,7 @@ async def send_message(
         # Make request to TinyClaw service
         response = await coordinator.request_tinyclaw(
             "POST",
-            f"/agents/{agent_id}/message",
+            f"/api/agents/{agent_id}/message",
             json=create_message_request.model_dump(exclude_none=True, by_alias=True)
         )
 
