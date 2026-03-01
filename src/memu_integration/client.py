@@ -367,7 +367,8 @@ class MemUClient:
             logger.debug(
                 "Retrieving memories",
                 extra={
-                    "queries": request.queries,
+                    "query_count": len(request.queries) if request.queries else 0,
+                    "query_length": sum(len(q) for q in request.queries) if request.queries else 0,
                     "method": _get_enum_value(request.method),
                     "limit": request.limit,
                 },
@@ -423,7 +424,7 @@ class MemUClient:
             raise MemUError(
                 "Failed to retrieve memories",
                 details={
-                    "queries": request.queries,
+                    "query_count": len(request.queries) if request.queries else 0,
                     "error": str(e),
                 },
             ) from e
