@@ -27,6 +27,7 @@ from src.tinyclaw_integration.models import (
     TeamListResponse,
     AgentStatus,
     ChannelStatus,
+    ChannelType,
     MessageDirection,
 )
 

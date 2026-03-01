@@ -26,6 +26,7 @@ from src.memu_integration.models import (
     MemoryModality,
     RetrievalMethod,
     MemoryStatus,
+    MemoryMetadata,
     CategoryConfidence,
 )
 

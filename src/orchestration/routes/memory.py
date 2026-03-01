@@ -205,7 +205,7 @@ async def store_memory(
             "resource_url": request.resource_url,
             "user": request.user,
             "agent": request.agent,
-            "modality": request.modality.value
+            "modality": request.modality.value if hasattr(request.modality, "value") else request.modality
         })
 
         # Convert to MemU model format
@@ -300,7 +300,7 @@ async def retrieve_memories(
 
         logger.info("Retrieving memories", extra={
             "queries": request.queries,
-            "method": request.method.value,
+            "method": request.method.value if hasattr(request.method, "value") else request.method,
             "limit": request.limit
         })
 
@@ -322,7 +322,7 @@ async def retrieve_memories(
 
         logger.info("Memories retrieved successfully", extra={
             "total": response.get("total", 0),
-            "method": request.method.value
+            "method": request.method.value if hasattr(request.method, "value") else request.method
         })
 
         return MemoryRetrieveResponse(**response)
