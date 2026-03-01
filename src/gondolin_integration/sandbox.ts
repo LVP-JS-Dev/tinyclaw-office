@@ -401,10 +401,12 @@ export class SandboxManager {
       throw new Error("VM not initialized");
     }
 
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     // Create a timeout promise
     const timeoutPromise = new Promise<Omit<ExecutionResult, "command" | "duration">>(
       (resolve) => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           resolve({
             exitCode: -1,
             stdout: "",
@@ -439,8 +441,22 @@ export class SandboxManager {
       }
     })();
 
-    // Race between execution and timeout
-    return Promise.race([timeoutPromise, executionPromise]);
+    try {
+      // Race between execution and timeout
+      const result = await Promise.race([timeoutPromise, executionPromise]);
+
+      // If timeout occurred, clean up the VM
+      if (result.timedOut) {
+        await this.close();
+      }
+
+      return result;
+    } finally {
+      // Clear timeout to prevent memory leaks
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
   }
 
   /**

@@ -206,6 +206,26 @@ async function shutdown(): Promise<void> {
 }
 
 // ------------------------------------------------------------------------------
+// Async Handler Wrapper
+// ------------------------------------------------------------------------------
+
+/**
+ * Async route handler wrapper for Express 4.
+ *
+ * Express 4 doesn't automatically handle promise rejections in async route handlers.
+ * This wrapper catches errors and passes them to next() for the error handler middleware.
+ *
+ * @param fn - Async route handler function
+ * @returns Wrapped route handler
+ */
+type AsyncRoute = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+
+const asyncHandler = (fn: AsyncRoute) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+
+// ------------------------------------------------------------------------------
 // Error Handlers
 // ------------------------------------------------------------------------------
 
@@ -257,7 +277,7 @@ function apiErrorHandler(
  *
  * @returns Health status with QEMU availability and platform info
  */
-app.get("/health", async (_req: Request, res: Response): Promise<void> => {
+app.get("/health", asyncHandler(async (_req: Request, res: Response): Promise<void> => {
   try {
     const client = getClient();
     const health: HealthStatus = await client.healthCheck();
@@ -281,7 +301,7 @@ app.get("/health", async (_req: Request, res: Response): Promise<void> => {
       ...health,
     });
   }
-});
+}));
 
 /**
  * GET /api/status
@@ -323,7 +343,7 @@ app.get("/api/status", (_req: Request, res: Response): void => {
  *
  * @returns Execution result with stdout, stderr, exit code, duration
  */
-app.post("/api/execute", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/execute", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { command, allowedHosts, secrets, timeout, cwd, env } = req.body;
 
@@ -351,7 +371,7 @@ app.post("/api/execute", async (req: Request, res: Response): Promise<void> => {
     };
 
     logger.info("Executing command (once)", {
-      command,
+      commandLength: typeof command === "string" ? command.length : 0,
       allowedHosts,
       timeout,
     });
@@ -359,7 +379,6 @@ app.post("/api/execute", async (req: Request, res: Response): Promise<void> => {
     const result: ExecutionResult = await client.executeOnce(executionRequest);
 
     logger.info("Command completed successfully", {
-      command,
       exitCode: result.exitCode,
       duration: result.duration,
     });
@@ -390,7 +409,7 @@ app.post("/api/execute", async (req: Request, res: Response): Promise<void> => {
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * POST /api/execute/node
@@ -407,7 +426,7 @@ app.post("/api/execute", async (req: Request, res: Response): Promise<void> => {
  *
  * @returns Execution result
  */
-app.post("/api/execute/node", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/execute/node", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, allowedHosts, secrets, timeout, cwd, env } = req.body;
 
@@ -454,7 +473,7 @@ app.post("/api/execute/node", async (req: Request, res: Response): Promise<void>
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * POST /api/execute/python
@@ -471,7 +490,7 @@ app.post("/api/execute/node", async (req: Request, res: Response): Promise<void>
  *
  * @returns Execution result
  */
-app.post("/api/execute/python", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/execute/python", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { code, allowedHosts, secrets, timeout, cwd, env } = req.body;
 
@@ -518,7 +537,7 @@ app.post("/api/execute/python", async (req: Request, res: Response): Promise<voi
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * POST /api/execute/script
@@ -535,7 +554,7 @@ app.post("/api/execute/python", async (req: Request, res: Response): Promise<voi
  *
  * @returns Execution result
  */
-app.post("/api/execute/script", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/execute/script", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { script, allowedHosts, secrets, timeout, cwd, env } = req.body;
 
@@ -582,7 +601,7 @@ app.post("/api/execute/script", async (req: Request, res: Response): Promise<voi
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 // ------------------------------------------------------------------------------
 // Persistent Sandbox Endpoints
@@ -599,7 +618,7 @@ app.post("/api/execute/script", async (req: Request, res: Response): Promise<voi
  *
  * @returns Confirmation of sandbox creation
  */
-app.post("/api/sandbox", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/sandbox", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { allowedHosts, secrets } = req.body;
 
@@ -632,7 +651,7 @@ app.post("/api/sandbox", async (req: Request, res: Response): Promise<void> => {
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * POST /api/sandbox/execute
@@ -647,7 +666,7 @@ app.post("/api/sandbox", async (req: Request, res: Response): Promise<void> => {
  *
  * @returns Execution result
  */
-app.post("/api/sandbox/execute", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/sandbox/execute", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { command, timeout, cwd, env } = req.body;
 
@@ -691,7 +710,7 @@ app.post("/api/sandbox/execute", async (req: Request, res: Response): Promise<vo
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * POST /api/sandbox/batch
@@ -707,7 +726,7 @@ app.post("/api/sandbox/execute", async (req: Request, res: Response): Promise<vo
  *
  * @returns Array of execution results
  */
-app.post("/api/sandbox/batch", async (req: Request, res: Response): Promise<void> => {
+app.post("/api/sandbox/batch", asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
     const { commands, timeout, cwd, env, stopOnError = true } = req.body;
 
@@ -754,7 +773,7 @@ app.post("/api/sandbox/batch", async (req: Request, res: Response): Promise<void
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * GET /api/sandbox/status
@@ -782,7 +801,7 @@ app.get("/api/sandbox/status", (_req: Request, res: Response): void => {
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 /**
  * DELETE /api/sandbox
@@ -791,7 +810,7 @@ app.get("/api/sandbox/status", (_req: Request, res: Response): void => {
  *
  * @returns Confirmation of sandbox closure
  */
-app.delete("/api/sandbox", async (_req: Request, res: Response): Promise<void> => {
+app.delete("/api/sandbox", asyncHandler(async (_req: Request, res: Response): Promise<void> => {
   try {
     const client = getClient();
 
@@ -818,7 +837,7 @@ app.delete("/api/sandbox", async (_req: Request, res: Response): Promise<void> =
       originalError: error instanceof Error ? error.message : String(error),
     });
   }
-});
+}));
 
 // ------------------------------------------------------------------------------
 // 404 Handler

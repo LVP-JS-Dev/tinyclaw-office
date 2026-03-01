@@ -166,6 +166,21 @@ export class GondolinClient {
   private _initialized = false;
 
   /**
+   * Safely quote a value for shell execution using single quotes.
+   *
+   * Single quotes prevent ALL shell expansion ($, `, ", etc.).
+   * Single quotes within the value are escaped using '\''
+   *
+   * @param value - The value to quote
+   * @returns Safely quoted value for shell execution
+   */
+  private shellQuote(value: string): string {
+    // Single-quote escaping for POSIX shell safety
+    // ' -> '\'' (end quote, escaped quote, start quote)
+    return `'${value.replace(/'/g, "'\\''")}'`;
+  }
+
+  /**
    * Default configuration for sandbox execution.
    */
   private readonly defaultConfig = {
@@ -348,7 +363,7 @@ export class GondolinClient {
     const { command, allowedHosts, secrets, timeout, cwd, env } = request;
 
     this.logger.info("Executing command (once)", {
-      command,
+      commandLength: command.length,
       allowedHosts,
       timeout,
     });
@@ -372,7 +387,6 @@ export class GondolinClient {
       );
 
       this.logger.info("Command completed successfully", {
-        command,
         exitCode: result.exitCode,
         duration: result.duration,
       });
@@ -381,7 +395,7 @@ export class GondolinClient {
 
     } catch (error) {
       this.logger.error("Command execution failed", {
-        command,
+        commandLength: command.length,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -455,7 +469,7 @@ export class GondolinClient {
     }
 
     this.logger.debug("Executing command in persistent sandbox", {
-      command,
+      commandLength: command.length,
       timeout: options.timeout,
     });
 
@@ -529,7 +543,8 @@ export class GondolinClient {
    * ```
    */
   async executeNode(code: string, request: Omit<ExecutionRequest, "command">): Promise<ExecutionResult> {
-    const command = `node -e "${code.replace(/"/g, '\\"')}"`;
+    // Single quotes prevent ALL shell expansion ($, `, ", etc.)
+    const command = `node -e ${this.shellQuote(code)}`;
     return this.executeOnce({ ...request, command });
   }
 
@@ -549,7 +564,8 @@ export class GondolinClient {
    * ```
    */
   async executePython(code: string, request: Omit<ExecutionRequest, "command">): Promise<ExecutionResult> {
-    const command = `python3 -c "${code.replace(/"/g, '\\"')}"`;
+    // Single quotes prevent ALL shell expansion ($, `, ", etc.)
+    const command = `python3 -c ${this.shellQuote(code)}`;
     return this.executeOnce({ ...request, command });
   }
 
@@ -569,7 +585,8 @@ export class GondolinClient {
    * ```
    */
   async executeScript(script: string, request: Omit<ExecutionRequest, "command">): Promise<ExecutionResult> {
-    const command = `sh -c "${script.replace(/"/g, '\\"')}"`;
+    // Single quotes prevent ALL shell expansion ($, `, ", etc.)
+    const command = `sh -c ${this.shellQuote(script)}`;
     return this.executeOnce({ ...request, command });
   }
 }

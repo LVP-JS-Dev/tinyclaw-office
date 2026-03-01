@@ -224,7 +224,7 @@ async def store_memory(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "POST",
-            "/memory/store",
+            "/api/memories",
             json=store_request.model_dump(exclude_none=True, by_alias=True)
         )
 
@@ -316,7 +316,7 @@ async def retrieve_memories(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "POST",
-            "/memory/retrieve",
+            "/api/memories/retrieve",
             json=retrieve_request.model_dump(exclude_none=True, by_alias=True)
         )
 
@@ -413,7 +413,7 @@ async def list_agent_memories(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "GET",
-            "/memory/list",
+            "/api/memories",
             params=params
         )
 

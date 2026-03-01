@@ -218,7 +218,7 @@ async def execute_code(
         # Make request to Gondolin service
         response = await coordinator.request_gondolin(
             "POST",
-            "/execute",
+            "/api/execute",
             json=gondolin_request
         )
 
@@ -293,7 +293,7 @@ async def get_execution_status(
         logger.info("Getting execution status", extra={"task_id": task_id})
 
         # Make request to Gondolin service
-        response = await coordinator.request_gondolin("GET", f"/execute/{task_id}")
+        response = await coordinator.request_gondolin("GET", f"/api/execute/{task_id}")
 
         logger.info("Execution status retrieved successfully", extra={
             "task_id": task_id,
