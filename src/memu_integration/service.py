@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 
 from src.shared.config import settings
@@ -21,6 +21,7 @@ from src.shared.errors import (
     http_status_from_error,
 )
 from src.shared.logging import get_logger, configure_logging
+from src.shared.auth import verify_api_key_optional
 from src.memu_integration.client import MemUClient
 from src.memu_integration.models import (
     Memory,
@@ -207,7 +208,7 @@ async def health_check():
 # Memory Storage Endpoints
 # ------------------------------------------------------------------------------
 
-@app.post("/api/memories", response_model=Memory, status_code=status.HTTP_201_CREATED)
+@app.post("/api/memories", response_model=Memory, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key_optional)])
 async def store_memory(request: StoreMemoryRequest):
     """
     Store a new memory in MemU.
@@ -269,12 +270,12 @@ async def retrieve_memory(request: RetrieveMemoryRequest):
         )
 
 
-@app.get("/api/memories", response_model=MemoryListResponse)
+@app.get("/api/memories", response_model=MemoryListResponse, dependencies=[Depends(verify_api_key_optional)])
 async def list_memories(
     user: str | None = None,
     agent: str | None = None,
     modality: MemoryModality | None = None,
-    status: MemoryStatus = MemoryStatus.ACTIVE,
+    memory_status: MemoryStatus = MemoryStatus.ACTIVE,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -301,7 +302,7 @@ async def list_memories(
             user=user,
             agent=agent,
             modality=modality,
-            status=status,
+            status=memory_status,
             limit=limit,
             offset=offset,
         )
@@ -315,7 +316,7 @@ async def list_memories(
         )
 
 
-@app.get("/api/memories/{memory_id}", response_model=Memory)
+@app.get("/api/memories/{memory_id}", response_model=Memory, dependencies=[Depends(verify_api_key_optional)])
 async def get_memory(memory_id: str):
     """
     Get details of a specific memory.
@@ -344,7 +345,7 @@ async def get_memory(memory_id: str):
         )
 
 
-@app.delete("/api/memories/{memory_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/memories/{memory_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(verify_api_key_optional)])
 async def delete_memory(memory_id: str):
     """
     Delete a memory.
@@ -375,7 +376,7 @@ async def delete_memory(memory_id: str):
 # Categorization Endpoints
 # ------------------------------------------------------------------------------
 
-@app.post("/api/memories/{memory_id}/categorize", response_model=Memory)
+@app.post("/api/memories/{memory_id}/categorize", response_model=Memory, dependencies=[Depends(verify_api_key_optional)])
 async def categorize_memory(memory_id: str, request: CategorizeMemoryRequest):
     """
     Categorize or re-categorize a memory.
@@ -445,7 +446,7 @@ async def list_categories(
         )
 
 
-@app.post("/api/categories", response_model=MemoryCategory, status_code=status.HTTP_201_CREATED)
+@app.post("/api/categories", response_model=MemoryCategory, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key_optional)])
 async def create_category(request: CreateCategoryRequest):
     """
     Create a new memory category.
@@ -478,7 +479,7 @@ async def create_category(request: CreateCategoryRequest):
 # Statistics Endpoint
 # ------------------------------------------------------------------------------
 
-@app.get("/api/stats", response_model=MemoryStats)
+@app.get("/api/stats", response_model=MemoryStats, dependencies=[Depends(verify_api_key_optional)])
 async def get_stats():
     """
     Get statistics about memory usage.

@@ -310,7 +310,7 @@ export class SandboxManager {
     const startTime = Date.now();
 
     this.logger.info("Executing command", {
-      command,
+      commandLength: command.length,
       timeout,
       cwd: options.cwd,
       throwOnError: options.throwOnError ?? true,
@@ -336,7 +336,7 @@ export class SandboxManager {
 
       // Log result
       this.logger.info("Command completed", {
-        command,
+        commandLength: command.length,
         exitCode: executionResult.exitCode,
         duration,
         timedOut: executionResult.timedOut,
@@ -347,7 +347,7 @@ export class SandboxManager {
       // Check for error conditions
       if (executionResult.timedOut) {
         const timeoutError = new TimeoutError("Command timed out", {
-          command,
+          commandLength: command.length,
           timeout,
           duration,
         });
@@ -358,7 +358,7 @@ export class SandboxManager {
 
       if (executionResult.exitCode !== 0 && (options.throwOnError ?? true)) {
         throw new ExecutionError("Command failed with non-zero exit code", {
-          command,
+          commandLength: command.length,
           exitCode: executionResult.exitCode,
           stderr: executionResult.stderr,
         });
@@ -372,13 +372,13 @@ export class SandboxManager {
 
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error("Command execution failed", {
-        command,
+        commandLength: command.length,
         error: message,
         duration: Date.now() - startTime,
       });
 
       throw new ExecutionError("Command execution failed", {
-        command,
+        commandLength: command.length,
         originalError: message,
       });
     }
@@ -401,10 +401,23 @@ export class SandboxManager {
       throw new Error("VM not initialized");
     }
 
-    // Create a timeout promise
+    const abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    // Create a timeout promise that aborts on timeout
     const timeoutPromise = new Promise<Omit<ExecutionResult, "command" | "duration">>(
       (resolve) => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
+          // Signal abort to the execution
+          abortController.abort();
+
+          // Clean up the VM to prevent resource leaks
+          this.close().catch((error) => {
+            this.logger.warn("Failed to close VM after timeout", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+
           resolve({
             exitCode: -1,
             stdout: "",
@@ -415,9 +428,19 @@ export class SandboxManager {
       },
     );
 
-    // Create the execution promise
+    // Create the execution promise with abort signal handling
     const executionPromise = (async (): Promise<Omit<ExecutionResult, "command" | "duration">> => {
       try {
+        // Check if already aborted before starting
+        if (abortController.signal.aborted) {
+          return {
+            exitCode: -1,
+            stdout: "",
+            stderr: "Execution aborted before start",
+            timedOut: true,
+          };
+        }
+
         const result = await this.vm.exec(command, {
           cwd: options.cwd,
           env: options.env,
@@ -430,6 +453,16 @@ export class SandboxManager {
           timedOut: false,
         };
       } catch (error) {
+        // If aborted, treat as timeout
+        if (abortController.signal.aborted) {
+          return {
+            exitCode: -1,
+            stdout: "",
+            stderr: `Command timed out after ${timeout}ms`,
+            timedOut: true,
+          };
+        }
+
         return {
           exitCode: -1,
           stdout: "",
@@ -439,8 +472,20 @@ export class SandboxManager {
       }
     })();
 
-    // Race between execution and timeout
-    return Promise.race([timeoutPromise, executionPromise]);
+    try {
+      // Race between execution and timeout
+      const result = await Promise.race([timeoutPromise, executionPromise]);
+
+      return result;
+    } finally {
+      // Clear timeout and abort signal to prevent memory leaks
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      // Abort the execution if still pending
+      abortController.abort();
+    }
   }
 
   /**
@@ -468,7 +513,7 @@ export class SandboxManager {
       // Stop if a command failed and throwOnError is true
       if (result.exitCode !== 0 && (options.throwOnError ?? true)) {
         this.logger.warn("Batch execution stopped due to error", {
-          command,
+          commandLength: command.length,
           exitCode: result.exitCode,
         });
         break;

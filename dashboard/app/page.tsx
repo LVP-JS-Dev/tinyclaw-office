@@ -145,7 +145,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchHealth() {
       try {
-        const response = await fetch("http://localhost:8080/health");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_ORCHESTRATION_URL || "http://localhost:8080"}/health`);
         if (response.ok) {
           const data: HealthResponse = await response.json();
           const servicesWithHealth = SERVICE_DEFINITIONS.map((def) => ({

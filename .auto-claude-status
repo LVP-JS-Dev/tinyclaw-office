@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "001-integrate-memory-management-tools",
+  "spec": "004-fix-review-comments-and-respond",
   "state": "building",
   "subtasks": {
-    "completed": 11,
-    "total": 40,
+    "completed": 29,
+    "total": 36,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "TinyClaw Integration Service",
+    "current": "Testing and Validation",
     "id": null,
-    "total": 4
+    "total": 5
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 12,
-    "started_at": "2026-03-01T17:47:46.233711"
+    "number": 31,
+    "started_at": "2026-03-01T23:38:19.833950"
   },
-  "last_update": "2026-03-01T18:26:29.220930"
+  "last_update": "2026-03-02T00:32:52.858040"
 }

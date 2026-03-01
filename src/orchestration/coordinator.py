@@ -8,6 +8,7 @@ graceful failure handling.
 
 import asyncio
 from dataclasses import dataclass
+from json import JSONDecodeError
 from typing import Any
 
 import httpx
@@ -315,7 +316,22 @@ class ServiceCoordinator:
                 # Return JSON response
                 if response.status_code == 204:
                     return {}
-                return response.json()
+                try:
+                    return response.json()
+                except JSONDecodeError as e:
+                    logger.error("Invalid JSON response from service", extra={
+                        "service": service,
+                        "status_code": response.status_code,
+                        "attempt": attempt + 1
+                    })
+                    raise IntegrationError(
+                        f"Service returned invalid JSON: {service}",
+                        details={
+                            "service": service,
+                            "status_code": response.status_code,
+                            "response_text": response.text[:200]  # Truncate for safety
+                        }
+                    )
 
             except httpx.HTTPStatusError as e:
                 last_error = e

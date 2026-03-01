@@ -8,9 +8,10 @@ including storing, retrieving, and listing memories with semantic search capabil
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -32,8 +33,8 @@ logger = get_logger(__name__)
 
 # The router will be initialized with coordinator dependency
 router = APIRouter(
-    prefix="/api/memory",
-    tags=["memory"],
+    prefix="/api/memories",
+    tags=["memories"],
 )
 
 
@@ -41,18 +42,20 @@ router = APIRouter(
 # Dependencies
 # ------------------------------------------------------------------------------
 
-async def get_coordinator():
+async def get_coordinator(request: Request):
     """
-    Dependency to get the service coordinator.
+    Dependency to get the service coordinator from the app state.
 
-    In a real implementation, this would be injected from the main app state.
-    For now, this is a placeholder that will be replaced by the actual dependency.
+    The coordinator is initialized during application startup and stored
+    in the FastAPI app.state for dependency injection.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        ServiceCoordinator instance from app.state
     """
-    from src.orchestration.coordinator import ServiceCoordinator
-
-    # This will be replaced by FastAPI's dependency injection system
-    # when the router is mounted in the main API
-    return None
+    return request.app.state.coordinator
 
 
 # ------------------------------------------------------------------------------
@@ -133,7 +136,7 @@ class MemoryResponse(BaseModel):
         default_factory=list,
         description="List of category IDs"
     )
-    status: str = Field(default="active", description="Memory status")
+    memory_status: str = Field(default="active", description="Memory status")
     created_at: str = Field(..., description="Memory creation timestamp")
     updated_at: str = Field(..., description="Memory last update timestamp")
 
@@ -170,8 +173,10 @@ class MemoryRetrieveResponse(BaseModel):
     responses={
         201: {"description": "Memory stored successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def store_memory(
     request: StoreMemoryRequestAPI,
@@ -202,10 +207,10 @@ async def store_memory(
             raise ValidationError("content is required")
 
         logger.info("Storing memory", extra={
-            "resource_url": request.resource_url,
+            "resource_url_present": bool(request.resource_url),
             "user": request.user,
             "agent": request.agent,
-            "modality": request.modality.value
+            "modality": request.modality.value if hasattr(request.modality, "value") else request.modality
         })
 
         # Convert to MemU model format
@@ -224,7 +229,7 @@ async def store_memory(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "POST",
-            "/memory/store",
+            "/api/memories",
             json=store_request.model_dump(exclude_none=True, by_alias=True)
         )
 
@@ -263,8 +268,10 @@ async def store_memory(
     responses={
         200: {"description": "Memories retrieved successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def retrieve_memories(
     request: RetrieveMemoryRequestAPI,
@@ -299,8 +306,9 @@ async def retrieve_memories(
             )
 
         logger.info("Retrieving memories", extra={
-            "queries": request.queries,
-            "method": request.method.value,
+            "queries_present": True,
+            "query_count": len(request.queries),
+            "method": request.method.value if hasattr(request.method, "value") else request.method,
             "limit": request.limit
         })
 
@@ -316,13 +324,13 @@ async def retrieve_memories(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "POST",
-            "/memory/retrieve",
+            "/api/memories/retrieve",
             json=retrieve_request.model_dump(exclude_none=True, by_alias=True)
         )
 
         logger.info("Memories retrieved successfully", extra={
             "total": response.get("total", 0),
-            "method": request.method.value
+            "method": request.method.value if hasattr(request.method, "value") else request.method
         })
 
         return MemoryRetrieveResponse(**response)
@@ -355,9 +363,11 @@ async def retrieve_memories(
     responses={
         200: {"description": "Memories listed successfully"},
         400: {"description": "Invalid agent ID"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "MemU service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def list_agent_memories(
     agent_id: str,
@@ -413,7 +423,7 @@ async def list_agent_memories(
         # Make request to MemU service
         response = await coordinator.request_memu(
             "GET",
-            "/memory/list",
+            "/api/memories",
             params=params
         )
 

@@ -67,8 +67,8 @@ class Settings(BaseSettings):
         description="Logging level"
     )
     SECRET_KEY: str = Field(
-        default="change-this-in-production",
-        description="Secret key for API authentication"
+        default="",
+        description="Secret key for API authentication (required in production)"
     )
 
     # ------------------------------------------------------------------------------
@@ -126,12 +126,24 @@ class Settings(BaseSettings):
             return [host.strip() for host in v.split(",") if host.strip()]
         return v
 
-    @field_validator("OPENAI_API_KEY", "SECRET_KEY")
+    @field_validator("SECRET_KEY")
     @classmethod
-    def validate_required_secrets(cls, v: str, info) -> str:
-        """Validate that required secrets are not empty in production."""
-        # Allow empty values for development/testing
-        # In production, you should enforce these
+    def validate_secret_key(cls, v: str) -> str:
+        """Validate that SECRET_KEY is set in production."""
+        if not v or v == "change-this-in-production":
+            raise ValueError(
+                "SECRET_KEY must be set to a strong random value. "
+                "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        return v
+
+    @field_validator("OPENAI_API_KEY")
+    @classmethod
+    def validate_openai_key(cls, v: str) -> str:
+        """Validate that OPENAI_API_KEY is set if using MemU in postgres mode."""
+        # Allow empty for development, but warn
         return v
 
 

@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -26,6 +26,7 @@ from src.shared.errors import (
     http_status_from_error,
 )
 from src.shared.logging import get_logger, configure_logging
+from src.shared.auth import verify_api_key_optional
 from src.orchestration.coordinator import ServiceCoordinator
 
 # Import route routers
@@ -217,6 +218,7 @@ async def general_exception_handler(request: Any, exc: Exception) -> JSONRespons
     "/health",
     summary="Health check endpoint",
     description="Returns the health status of the orchestration service and all dependencies",
+    dependencies=[Depends(verify_api_key_optional)],
 )
 async def health_check():
     """

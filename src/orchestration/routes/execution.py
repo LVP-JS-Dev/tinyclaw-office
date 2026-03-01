@@ -9,9 +9,10 @@ from typing import Any
 from uuid import uuid4
 from enum import Enum
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -19,6 +20,7 @@ from src.shared.errors import (
     http_status_from_error,
 )
 from src.shared.logging import get_logger
+from src.orchestration.coordinator import ServiceCoordinator
 
 logger = get_logger(__name__)
 
@@ -33,18 +35,29 @@ router = APIRouter(
 # Dependencies
 # ------------------------------------------------------------------------------
 
-async def get_coordinator():
+async def get_coordinator(request: Request) -> ServiceCoordinator:
     """
-    Dependency to get the service coordinator.
+    Dependency to get the service coordinator from the app state.
 
-    In a real implementation, this would be injected from the main app state.
-    For now, this is a placeholder that will be replaced by the actual dependency.
+    The coordinator is initialized during application startup and stored
+    in the FastAPI app.state for dependency injection.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        ServiceCoordinator instance from app.state
+
+    Raises:
+        HTTPException: If coordinator is not available
     """
-    from src.orchestration.coordinator import ServiceCoordinator
-
-    # This will be replaced by FastAPI's dependency injection system
-    # when the router is mounted in the main API
-    return None
+    coordinator = getattr(request.app.state, "coordinator", None)
+    if coordinator is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"message": "Service coordinator unavailable", "error_type": "IntegrationError"}
+        )
+    return coordinator
 
 
 # ------------------------------------------------------------------------------
@@ -163,12 +176,14 @@ class ExecutionStatusResponse(BaseModel):
     responses={
         201: {"description": "Execution task created successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "Gondolin service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def execute_code(
     request: ExecuteCodeRequest,
-    coordinator = Depends(get_coordinator)
+    coordinator: ServiceCoordinator = Depends(get_coordinator)
 ) -> ExecutionResponse:
     """
     Submit code for execution in a Gondolin sandbox.
@@ -194,46 +209,72 @@ async def execute_code(
                 details={"timeout": request.timeout}
             )
 
-        logger.info("Creating execution task", extra={
+        logger.info("Executing code", extra={
             "language": request.language,
             "timeout": request.timeout,
-            "agent_id": request.agent_id
+            "timeout_ms": request.timeout * 1000
         })
 
-        # Generate task ID
-        task_id = str(uuid4())
-
-        # Prepare execution request for Gondolin service
-        gondolin_request = {
-            "task_id": task_id,
-            "code": request.code,
-            "language": request.language,
-            "timeout": request.timeout,
-            "allowed_hosts": request.allowed_hosts,
-            "environment_vars": request.environment_vars,
-            "agent_id": request.agent_id,
-            "metadata": request.metadata
-        }
+        # Determine the endpoint based on language
+        language_lower = request.language.lower()
+        if language_lower in ("python", "py"):
+            endpoint = "/api/execute/python"
+            gondolin_request = {
+                "code": request.code,
+                "allowedHosts": request.allowed_hosts if request.allowed_hosts else [],
+                "timeout": request.timeout * 1000,  # Convert to milliseconds
+                "env": request.environment_vars if request.environment_vars else {}
+            }
+        elif language_lower in ("javascript", "node", "js"):
+            endpoint = "/api/execute/node"
+            gondolin_request = {
+                "code": request.code,
+                "allowedHosts": request.allowed_hosts if request.allowed_hosts else [],
+                "timeout": request.timeout * 1000,  # Convert to milliseconds
+                "env": request.environment_vars if request.environment_vars else {}
+            }
+        elif language_lower in ("bash", "shell", "sh"):
+            endpoint = "/api/execute/script"
+            gondolin_request = {
+                "script": request.code,
+                "allowedHosts": request.allowed_hosts if request.allowed_hosts else [],
+                "timeout": request.timeout * 1000,  # Convert to milliseconds
+                "env": request.environment_vars if request.environment_vars else {}
+            }
+        else:
+            # For other languages, try to construct a command
+            endpoint = "/api/execute"
+            command = f"{language_lower} -c {request.code!r}"
+            gondolin_request = {
+                "command": command,
+                "allowedHosts": request.allowed_hosts if request.allowed_hosts else [],
+                "timeout": request.timeout * 1000,  # Convert to milliseconds
+                "env": request.environment_vars if request.environment_vars else {}
+            }
 
         # Make request to Gondolin service
         response = await coordinator.request_gondolin(
             "POST",
-            "/execute",
+            endpoint,
             json=gondolin_request
         )
 
-        logger.info("Execution task created successfully", extra={
-            "task_id": task_id,
-            "status": response.get("status", "pending")
+        logger.info("Code execution completed", extra={
+            "language": request.language,
+            "exit_code": response.get("result", {}).get("exitCode")
         })
+
+        # Map Gondolin response to ExecutionResponse
+        result = response.get("result", {})
+        task_id = str(uuid4())
 
         return ExecutionResponse(
             task_id=task_id,
-            status=ExecutionStatus.PENDING,
+            status=ExecutionStatus.COMPLETED if result.get("exitCode") == 0 else ExecutionStatus.FAILED,
             code=request.code,
             language=request.language,
             timeout=request.timeout,
-            created_at=response.get("created_at", ""),
+            created_at=result.get("duration", ""),
             agent_id=request.agent_id
         )
 
@@ -264,13 +305,15 @@ async def execute_code(
     description="Retrieve the status and results of an execution task",
     responses={
         200: {"description": "Execution status retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Task not found"},
         503: {"description": "Gondolin service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def get_execution_status(
     task_id: str,
-    coordinator = Depends(get_coordinator)
+    coordinator: ServiceCoordinator = Depends(get_coordinator)
 ) -> ExecutionStatusResponse:
     """
     Get the status and results of an execution task.
@@ -293,7 +336,7 @@ async def get_execution_status(
         logger.info("Getting execution status", extra={"task_id": task_id})
 
         # Make request to Gondolin service
-        response = await coordinator.request_gondolin("GET", f"/execute/{task_id}")
+        response = await coordinator.request_gondolin("GET", f"/api/execute/{task_id}")
 
         logger.info("Execution status retrieved successfully", extra={
             "task_id": task_id,

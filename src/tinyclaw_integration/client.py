@@ -27,6 +27,7 @@ from src.tinyclaw_integration.models import (
     TeamListResponse,
     AgentStatus,
     ChannelStatus,
+    ChannelType,
     MessageDirection,
 )
 
@@ -380,8 +381,11 @@ class TinyClawClient:
         agent_id: str,
         name: str | None = None,
         description: str | None = None,
-        status: AgentStatus | None = None,
+        agent_status: AgentStatus | None = None,
         channels: list[str] | None = None,
+        capabilities: list[Any] | None = None,
+        config: dict[str, Any] | None = None,
+        team_id: str | None = None,
     ) -> Agent:
         """
         Update an existing agent.
@@ -390,8 +394,11 @@ class TinyClawClient:
             agent_id: Unique identifier of the agent to update
             name: New name for the agent
             description: New description for the agent
-            status: New status for the agent
+            agent_status: New status for the agent
             channels: New list of channel IDs
+            capabilities: New list of agent capabilities
+            config: New agent configuration
+            team_id: New team ID for the agent
 
         Returns:
             Updated Agent object
@@ -404,7 +411,7 @@ class TinyClawClient:
             >>> agent = await client.update_agent(
             ...     "agent-123",
             ...     description="Updated description",
-            ...     status=AgentStatus.ACTIVE,
+            ...     agent_status=AgentStatus.ACTIVE,
             ... )
         """
         self._ensure_initialized()
@@ -418,15 +425,21 @@ class TinyClawClient:
                 updates["name"] = name
             if description is not None:
                 updates["description"] = description
-            if status is not None:
-                updates["status"] = status.value
+            if agent_status is not None:
+                updates["status"] = agent_status.value
             if channels is not None:
                 updates["channels"] = channels
+            if capabilities is not None:
+                updates["capabilities"] = capabilities
+            if config is not None:
+                updates["config"] = config
+            if team_id is not None:
+                updates["team_id"] = team_id
 
             if not updates:
                 raise ValidationError("No updates provided", details={"agent_id": agent_id})
 
-            logger.debug("Updating agent", extra={"agent_id": agent_id, "updates": updates})
+            logger.debug("Updating agent", extra={"agent_id": agent_id, "update_keys": list(updates.keys())})
 
             response = await self._client.patch(
                 f"/api/agents/{agent_id}",

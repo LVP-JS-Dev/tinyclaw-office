@@ -27,6 +27,7 @@ Examples:
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -105,21 +106,45 @@ def _mask_password(url: str) -> str:
     """
     Mask password in database URL for logging.
 
+    Handles URLs with special characters in passwords and various formats.
+
     Args:
         url: Database connection string
 
     Returns:
         URL with password masked
+
+    Examples:
+        >>> _mask_password("postgresql://user:pass@localhost:5432/db")
+        'postgresql://user:****@localhost:5432/db'
+        >>> _mask_password("postgresql://user@localhost:5432/db")
+        'postgresql://user@localhost:5432/db'
     """
-    if "://" in url and "@" in url:
-        # Mask password in postgresql://user:pass@host/db format
-        parts = url.split("://")
-        if len(parts) == 2:
-            auth_host, db = parts[1].split("@")
-            if ":" in auth_host:
-                user, _ = auth_host.split(":", 1)
-                return f"{parts[0]}://{user}:****@{db}"
-    return url
+    # Check if URL has both protocol and auth section
+    if "://" not in url or "@" not in url:
+        return url
+
+    # Split protocol from the rest
+    protocol, rest = url.split("://", 1)
+
+    # Find the last @ to separate auth from host (handles @ in passwords)
+    at_pos = rest.rfind("@")
+    if at_pos == -1:
+        return url
+
+    auth = rest[:at_pos]
+    host = rest[at_pos + 1:]
+
+    # Check if auth contains a password (has :)
+    if ":" not in auth:
+        # No password, return URL as is
+        return url
+
+    # Split user and password (only on first : to handle : in passwords)
+    user, _ = auth.split(":", 1)
+
+    # Reconstruct URL with masked password
+    return f"{protocol}://{user}:****@{host}"
 
 
 async def verify_connection(conn) -> bool:

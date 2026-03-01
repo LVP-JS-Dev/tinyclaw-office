@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 
 from src.shared.config import settings
@@ -21,6 +21,7 @@ from src.shared.errors import (
     http_status_from_error,
 )
 from src.shared.logging import get_logger, configure_logging
+from src.shared.auth import verify_api_key_optional
 from src.tinyclaw_integration.client import TinyClawClient
 from src.tinyclaw_integration.models import (
     Agent,
@@ -28,6 +29,7 @@ from src.tinyclaw_integration.models import (
     AgentTeam,
     Channel,
     CreateAgentRequest,
+    UpdateAgentRequest,
     CreateMessageRequest,
     CreateTeamRequest,
     AgentListResponse,
@@ -211,9 +213,9 @@ async def health_check():
 # Agent Endpoints
 # ------------------------------------------------------------------------------
 
-@app.get("/api/agents", response_model=AgentListResponse)
+@app.get("/api/agents", response_model=AgentListResponse, dependencies=[Depends(verify_api_key_optional)])
 async def list_agents(
-    status: AgentStatus | None = None,
+    agent_status: AgentStatus | None = None,
     team_id: str | None = None,
     limit: int = 100,
     offset: int = 0,
@@ -233,7 +235,7 @@ async def list_agents(
     try:
         client = get_tinyclaw_client()
         return await client.list_agents(
-            status=status,
+            status=agent_status,
             team_id=team_id,
             limit=limit,
             offset=offset,
@@ -248,7 +250,7 @@ async def list_agents(
         )
 
 
-@app.get("/api/agents/{agent_id}", response_model=Agent)
+@app.get("/api/agents/{agent_id}", response_model=Agent, dependencies=[Depends(verify_api_key_optional)])
 async def get_agent(agent_id: str):
     """
     Get details of a specific agent.
@@ -272,7 +274,7 @@ async def get_agent(agent_id: str):
         )
 
 
-@app.post("/api/agents", response_model=Agent, status_code=status.HTTP_201_CREATED)
+@app.post("/api/agents", response_model=Agent, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key_optional)])
 async def create_agent(request: CreateAgentRequest):
     """
     Create a new agent.
@@ -298,23 +300,17 @@ async def create_agent(request: CreateAgentRequest):
         )
 
 
-@app.patch("/api/agents/{agent_id}", response_model=Agent)
+@app.patch("/api/agents/{agent_id}", response_model=Agent, dependencies=[Depends(verify_api_key_optional)])
 async def update_agent(
     agent_id: str,
-    name: str | None = None,
-    description: str | None = None,
-    status: AgentStatus | None = None,
-    channels: list[str] | None = None,
+    request: UpdateAgentRequest,
 ):
     """
     Update an existing agent.
 
     Args:
         agent_id: Unique identifier of the agent
-        name: New name for the agent
-        description: New description for the agent
-        status: New status for the agent
-        channels: New list of channel IDs
+        request: Agent update request body
 
     Returns:
         Updated Agent object
@@ -323,10 +319,13 @@ async def update_agent(
         client = get_tinyclaw_client()
         return await client.update_agent(
             agent_id=agent_id,
-            name=name,
-            description=description,
-            status=status,
-            channels=channels,
+            name=request.name,
+            description=request.description,
+            agent_status=request.agent_status,
+            channels=request.channels,
+            capabilities=request.capabilities,
+            config=request.config,
+            team_id=request.team_id,
         )
     except ValidationError as e:
         raise HTTPException(status_code=e.status_code, detail=e.to_dict())
@@ -340,7 +339,7 @@ async def update_agent(
         )
 
 
-@app.delete("/api/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(verify_api_key_optional)])
 async def delete_agent(agent_id: str):
     """
     Delete an agent.
@@ -368,7 +367,7 @@ async def delete_agent(agent_id: str):
 # Message Endpoints
 # ------------------------------------------------------------------------------
 
-@app.post("/api/messages", response_model=Message, status_code=status.HTTP_201_CREATED)
+@app.post("/api/messages", response_model=Message, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key_optional)])
 async def send_message(request: CreateMessageRequest):
     """
     Send a message through an agent.
@@ -394,7 +393,7 @@ async def send_message(request: CreateMessageRequest):
         )
 
 
-@app.get("/api/messages", response_model=MessageListResponse)
+@app.get("/api/messages", response_model=MessageListResponse, dependencies=[Depends(verify_api_key_optional)])
 async def list_messages(
     agent_id: str | None = None,
     channel_id: str | None = None,
@@ -438,7 +437,7 @@ async def list_messages(
 # Team Endpoints
 # ------------------------------------------------------------------------------
 
-@app.get("/api/teams", response_model=TeamListResponse)
+@app.get("/api/teams", response_model=TeamListResponse, dependencies=[Depends(verify_api_key_optional)])
 async def list_teams(
     active: bool | None = None,
     limit: int = 100,
@@ -472,7 +471,7 @@ async def list_teams(
         )
 
 
-@app.get("/api/teams/{team_id}", response_model=AgentTeam)
+@app.get("/api/teams/{team_id}", response_model=AgentTeam, dependencies=[Depends(verify_api_key_optional)])
 async def get_team(team_id: str):
     """
     Get details of a specific team.
@@ -498,7 +497,7 @@ async def get_team(team_id: str):
         )
 
 
-@app.post("/api/teams", response_model=AgentTeam, status_code=status.HTTP_201_CREATED)
+@app.post("/api/teams", response_model=AgentTeam, status_code=status.HTTP_201_CREATED, dependencies=[Depends(verify_api_key_optional)])
 async def create_team(request: CreateTeamRequest):
     """
     Create a new agent team.
@@ -528,10 +527,10 @@ async def create_team(request: CreateTeamRequest):
 # Channel Endpoints
 # ------------------------------------------------------------------------------
 
-@app.get("/api/channels", response_model=list[Channel])
+@app.get("/api/channels", response_model=list[Channel], dependencies=[Depends(verify_api_key_optional)])
 async def list_channels(
     channel_type: ChannelType | None = None,
-    status: ChannelStatus | None = None,
+    channel_status: ChannelStatus | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -540,7 +539,7 @@ async def list_channels(
 
     Args:
         channel_type: Filter by channel type
-        status: Filter by connection status
+        channel_status: Filter by connection status
         limit: Maximum number of channels to return
         offset: Number of channels to skip
 
@@ -551,7 +550,7 @@ async def list_channels(
         client = get_tinyclaw_client()
         return await client.list_channels(
             channel_type=channel_type,
-            status=status,
+            status=channel_status,
             limit=limit,
             offset=offset,
         )

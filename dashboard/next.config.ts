@@ -27,8 +27,8 @@ const nextConfig: NextConfig = {
 
   // Environment variables exposed to the browser
   env: {
-    // Orchestration API URL (default to localhost)
-    NEXT_PUBLIC_ORCHESTRATION_URL: process.env.NEXT_PUBLIC_ORCHESTRATION_URL || "http://localhost:8080",
+    // Orchestration API URL
+    NEXT_PUBLIC_ORCHESTRATION_URL: process.env.NEXT_PUBLIC_ORCHESTRATION_URL,
   },
 
   // Webpack configuration for additional module resolution

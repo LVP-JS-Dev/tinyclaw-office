@@ -9,9 +9,10 @@ sending messages to agents.
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from pydantic import BaseModel, Field
 
+from src.shared.auth import verify_api_key
 from src.shared.errors import (
     ValidationError,
     IntegrationError,
@@ -41,18 +42,20 @@ router = APIRouter(
 # Dependencies
 # ------------------------------------------------------------------------------
 
-async def get_coordinator():
+async def get_coordinator(request: Request):
     """
-    Dependency to get the service coordinator.
+    Dependency to get the service coordinator from the app state.
 
-    In a real implementation, this would be injected from the main app state.
-    For now, this is a placeholder that will be replaced by the actual dependency.
+    The coordinator is initialized during application startup and stored
+    in the FastAPI app.state for dependency injection.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        ServiceCoordinator instance from app.state
     """
-    from src.orchestration.coordinator import ServiceCoordinator
-
-    # This will be replaced by FastAPI's dependency injection system
-    # when the router is mounted in the main API
-    return None
+    return request.app.state.coordinator
 
 
 # ------------------------------------------------------------------------------
@@ -165,8 +168,10 @@ class AgentResponse(BaseModel):
     description="Retrieve a list of all agents in the system with optional filtering",
     responses={
         200: {"description": "Agents retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def list_agents(
     status_filter: AgentStatus | None = None,
@@ -220,7 +225,7 @@ async def list_agents(
             params["team_id"] = team_id
 
         # Make request to TinyClaw service
-        response = await coordinator.request_tinyclaw("GET", "/agents", params=params)
+        response = await coordinator.request_tinyclaw("GET", "/api/agents", params=params)
 
         logger.info("Agents listed successfully", extra={
             "count": len(response.get("agents", [])),
@@ -258,8 +263,10 @@ async def list_agents(
     responses={
         201: {"description": "Agent created successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def create_agent(
     request: CreateAgentRequestAPI,
@@ -298,7 +305,7 @@ async def create_agent(
         # Make request to TinyClaw service
         response = await coordinator.request_tinyclaw(
             "POST",
-            "/agents",
+            "/api/agents",
             json=create_request.model_dump(exclude_none=True, by_alias=True)
         )
 
@@ -336,9 +343,11 @@ async def create_agent(
     description="Retrieve detailed information about a specific agent",
     responses={
         200: {"description": "Agent retrieved successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def get_agent(
     agent_id: str,
@@ -365,7 +374,7 @@ async def get_agent(
         logger.info("Getting agent", extra={"agent_id": agent_id})
 
         # Make request to TinyClaw service
-        response = await coordinator.request_tinyclaw("GET", f"/agents/{agent_id}")
+        response = await coordinator.request_tinyclaw("GET", f"/api/agents/{agent_id}")
 
         logger.info("Agent retrieved successfully", extra={"agent_id": agent_id})
 
@@ -406,9 +415,11 @@ async def get_agent(
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         204: {"description": "Agent deleted successfully"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def delete_agent(
     agent_id: str,
@@ -432,7 +443,7 @@ async def delete_agent(
         logger.info("Deleting agent", extra={"agent_id": agent_id})
 
         # Make request to TinyClaw service
-        await coordinator.request_tinyclaw("DELETE", f"/agents/{agent_id}")
+        await coordinator.request_tinyclaw("DELETE", f"/api/agents/{agent_id}")
 
         logger.info("Agent deleted successfully", extra={"agent_id": agent_id})
 
@@ -472,9 +483,11 @@ async def delete_agent(
     responses={
         200: {"description": "Message sent successfully"},
         400: {"description": "Invalid request data"},
+        401: {"description": "Unauthorized - invalid API key"},
         404: {"description": "Agent or channel not found"},
         503: {"description": "TinyClaw service unavailable"},
-    }
+    },
+    dependencies=[Depends(verify_api_key)]
 )
 async def send_message(
     agent_id: str,
@@ -523,7 +536,7 @@ async def send_message(
         # Make request to TinyClaw service
         response = await coordinator.request_tinyclaw(
             "POST",
-            f"/agents/{agent_id}/message",
+            f"/api/agents/{agent_id}/message",
             json=create_message_request.model_dump(exclude_none=True, by_alias=True)
         )
 

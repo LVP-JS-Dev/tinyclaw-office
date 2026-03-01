@@ -26,10 +26,27 @@ from src.memu_integration.models import (
     MemoryModality,
     RetrievalMethod,
     MemoryStatus,
+    MemoryMetadata,
     CategoryConfidence,
 )
 
 logger = get_logger(__name__)
+
+
+def _get_enum_value(value: Any) -> Any:
+    """
+    Safely extract the value from an enum or return the value as-is.
+
+    When Pydantic models have use_enum_values=True, enum fields may already
+    be their string values. This helper safely handles both cases.
+
+    Args:
+        value: An enum instance or a raw value
+
+    Returns:
+        The enum's value if it's an enum, otherwise the value itself
+    """
+    return value.value if hasattr(value, "value") else value
 
 
 class MemUClient:
@@ -259,7 +276,7 @@ class MemUClient:
                 "Storing memory",
                 extra={
                     "resource_url": request.resource_url,
-                    "modality": request.modality.value,
+                    "modality": _get_enum_value(request.modality),
                     "user": request.user,
                     "agent": request.agent,
                 },
@@ -278,7 +295,7 @@ class MemUClient:
                 None,
                 lambda: self._service.memorize(
                     resource_url=request.resource_url,
-                    modality=request.modality.value,
+                    modality=_get_enum_value(request.modality),
                     user=request.user,
                     content=content_str,
                 ),
@@ -350,8 +367,9 @@ class MemUClient:
             logger.debug(
                 "Retrieving memories",
                 extra={
-                    "queries": request.queries,
-                    "method": request.method.value,
+                    "query_count": len(request.queries) if request.queries else 0,
+                    "query_length": sum(len(q) for q in request.queries) if request.queries else 0,
+                    "method": _get_enum_value(request.method),
                     "limit": request.limit,
                 },
             )
@@ -363,7 +381,7 @@ class MemUClient:
                 lambda: self._service.retrieve(
                     queries=request.queries,
                     where=request.where,
-                    method=request.method.value,
+                    method=_get_enum_value(request.method),
                     limit=request.limit,
                 ),
             )
@@ -406,7 +424,7 @@ class MemUClient:
             raise MemUError(
                 "Failed to retrieve memories",
                 details={
-                    "queries": request.queries,
+                    "query_count": len(request.queries) if request.queries else 0,
                     "error": str(e),
                 },
             ) from e
@@ -448,13 +466,13 @@ class MemUClient:
         self._ensure_initialized()
 
         try:
-            where: dict[str, Any] = {"status": status.value}
+            where: dict[str, Any] = {"status": _get_enum_value(status)}
             if user:
                 where["user"] = user
             if agent:
                 where["agent"] = agent
             if modality:
-                where["modality"] = modality.value
+                where["modality"] = _get_enum_value(modality)
 
             logger.debug("Listing memories", extra={"where": where, "limit": limit})
 
