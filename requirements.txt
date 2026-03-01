@@ -1,0 +1,6 @@
+# Python dependencies for claw-compactor integration
+#
+# tiktoken is optional - used for accurate token counting in compression operations.
+# The library works without it, but token counts may be approximate.
+# Install with: pip install tiktoken
+tiktoken>=0.5.0
