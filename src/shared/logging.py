@@ -5,6 +5,7 @@ This module provides a centralized logging configuration that outputs
 structured JSON logs for easy parsing and analysis in production environments.
 """
 
+import contextvars
 import json
 import logging
 import sys
@@ -12,6 +13,12 @@ from datetime import datetime
 from typing import Any
 
 from src.shared.config import settings
+
+
+# Context variable for storing logger context data (thread-safe and async-safe)
+_logger_context: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar(
+    "_logger_context", default={}
+)
 
 
 class JSONFormatter(logging.Formatter):
@@ -125,13 +132,28 @@ def configure_logging(level: str | None = None) -> None:
     root_logger.setLevel(getattr(logging, log_level))
     root_logger.addHandler(handler)
 
+    # Set up global record factory that injects context from context variable
+    old_factory = logging.getLogRecordFactory()
+
+    def _context_aware_factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
+        """Record factory that injects context from the context variable."""
+        record = old_factory(*args, **kwargs)
+        # Inject context from the context variable into the record
+        context_data = _logger_context.get({})
+        for key, value in context_data.items():
+            setattr(record, key, value)
+        return record
+
+    logging.setLogRecordFactory(_context_aware_factory)
+
 
 class LoggerContext:
     """
     Context manager for adding temporary context to log records.
 
     This allows you to add contextual information to all log messages
-    within a specific code block.
+    within a specific code block. The context is isolated per thread/async task
+    using Python's contextvars module, making it safe for concurrent use.
 
     Example:
         >>> logger = get_logger(__name__)
@@ -150,21 +172,18 @@ class LoggerContext:
         """
         self.logger = logger
         self.context = context
-        self.old_factory: logging.LogRecord | None = None
-
-    def _record_factory(self, *args: Any, **kwargs: Any) -> logging.LogRecord:
-        """Custom record factory that injects context."""
-        record = self.old_factory(*args, **kwargs)  # type: ignore
-        for key, value in self.context.items():
-            setattr(record, key, value)
-        return record
+        self._token: contextvars.Token[dict[str, Any]] | None = None
 
     def __enter__(self) -> "LoggerContext":
-        """Enter the context and inject context into log records."""
-        self.old_factory = logging.getLogRecordFactory()
-        logging.setLogRecordFactory(self._record_factory)
+        """Enter the context and set the context variable."""
+        # Get current context and merge with new context
+        current_context = _logger_context.get({})
+        merged_context = {**current_context, **self.context}
+        # Set the merged context in the context variable
+        self._token = _logger_context.set(merged_context)
         return self
 
     def __exit__(self, *args: Any) -> None:
-        """Exit the context and restore the original record factory."""
-        logging.setLogRecordFactory(self.old_factory)
+        """Exit the context and reset the context variable."""
+        if self._token is not None:
+            _logger_context.reset(self._token)
