@@ -401,12 +401,23 @@ export class SandboxManager {
       throw new Error("VM not initialized");
     }
 
+    const abortController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    // Create a timeout promise
+    // Create a timeout promise that aborts on timeout
     const timeoutPromise = new Promise<Omit<ExecutionResult, "command" | "duration">>(
       (resolve) => {
         timeoutId = setTimeout(() => {
+          // Signal abort to the execution
+          abortController.abort();
+
+          // Clean up the VM to prevent resource leaks
+          this.close().catch((error) => {
+            this.logger.warn("Failed to close VM after timeout", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+
           resolve({
             exitCode: -1,
             stdout: "",
@@ -417,9 +428,19 @@ export class SandboxManager {
       },
     );
 
-    // Create the execution promise
+    // Create the execution promise with abort signal handling
     const executionPromise = (async (): Promise<Omit<ExecutionResult, "command" | "duration">> => {
       try {
+        // Check if already aborted before starting
+        if (abortController.signal.aborted) {
+          return {
+            exitCode: -1,
+            stdout: "",
+            stderr: "Execution aborted before start",
+            timedOut: true,
+          };
+        }
+
         const result = await this.vm.exec(command, {
           cwd: options.cwd,
           env: options.env,
@@ -432,6 +453,16 @@ export class SandboxManager {
           timedOut: false,
         };
       } catch (error) {
+        // If aborted, treat as timeout
+        if (abortController.signal.aborted) {
+          return {
+            exitCode: -1,
+            stdout: "",
+            stderr: `Command timed out after ${timeout}ms`,
+            timedOut: true,
+          };
+        }
+
         return {
           exitCode: -1,
           stdout: "",
@@ -445,17 +476,15 @@ export class SandboxManager {
       // Race between execution and timeout
       const result = await Promise.race([timeoutPromise, executionPromise]);
 
-      // If timeout occurred, clean up the VM
-      if (result.timedOut) {
-        await this.close();
-      }
-
       return result;
     } finally {
-      // Clear timeout to prevent memory leaks
+      // Clear timeout and abort signal to prevent memory leaks
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+
+      // Abort the execution if still pending
+      abortController.abort();
     }
   }
 
