@@ -207,7 +207,7 @@ async def store_memory(
             raise ValidationError("content is required")
 
         logger.info("Storing memory", extra={
-            "resource_url": request.resource_url,
+            "resource_url_present": bool(request.resource_url),
             "user": request.user,
             "agent": request.agent,
             "modality": request.modality.value if hasattr(request.modality, "value") else request.modality
@@ -306,7 +306,8 @@ async def retrieve_memories(
             )
 
         logger.info("Retrieving memories", extra={
-            "queries": request.queries,
+            "queries_present": True,
+            "query_count": len(request.queries),
             "method": request.method.value if hasattr(request.method, "value") else request.method,
             "limit": request.limit
         })
