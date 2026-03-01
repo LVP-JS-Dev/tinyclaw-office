@@ -1,0 +1,73 @@
+{
+  "name": "tinyclaw-office",
+  "version": "0.1.0",
+  "description": "Unified AI platform integrating TinyClaw, MemU, and Gondolin for multi-agent collaboration, persistent memory, and sandboxed execution",
+  "type": "module",
+  "license": "MIT",
+  "author": "TinyClaw Office Team",
+  "keywords": [
+    "ai",
+    "agents",
+    "multi-agent",
+    "memory",
+    "sandbox",
+    "llm",
+    "tinyclaw",
+    "memu",
+    "gondolin"
+  ],
+  "homepage": "https://github.com/TinyAGI/tinyclaw-office#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TinyAGI/tinyclaw-office.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TinyAGI/tinyclaw-office/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "workspaces": [
+    "src/gondolin_integration",
+    "dashboard"
+  ],
+  "scripts": {
+    "clean": "rm -rf node_modules dist build **/node_modules",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "lint": "npm run lint:gondolin && npm run lint:dashboard",
+    "lint:gondolin": "cd src/gondolin_integration && eslint . --ext .ts",
+    "lint:dashboard": "cd dashboard && eslint . --ext .ts,.tsx",
+    "typecheck": "npm run typecheck:gondolin && npm run typecheck:dashboard",
+    "typecheck:gondolin": "cd src/gondolin_integration && tsc --noEmit",
+    "typecheck:dashboard": "cd dashboard && tsc --noEmit",
+    "start:gondolin": "cd src/gondolin_integration && npm run start",
+    "dev:gondolin": "cd src/gondolin_integration && npm run dev",
+    "start:dashboard": "cd dashboard && npm run start",
+    "dev:dashboard": "cd dashboard && npm run dev",
+    "test": "npm run test:gondolin && npm run test:dashboard",
+    "test:gondolin": "cd src/gondolin_integration && npm test",
+    "test:dashboard": "cd dashboard && npm test",
+    "build": "npm run build:gondolin && npm run build:dashboard",
+    "build:gondolin": "cd src/gondolin_integration && npm run build",
+    "build:dashboard": "cd dashboard && npm run build",
+    "docker:up": "docker-compose up -d postgres redis",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "dev:all": "npm-run-all --parallel dev:gondolin dev:dashboard",
+    "install:all": "npm install && cd src/gondolin_integration && npm install && cd ../../dashboard && npm install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.2.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {},
+  "private": true
+}
