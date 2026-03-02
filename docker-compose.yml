@@ -1,0 +1,66 @@
+# Docker Compose configuration for local development infrastructure
+# Provides PostgreSQL (for MemU) and Redis (for caching/queues)
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose up -d postgres # Start only PostgreSQL
+#   docker-compose down           # Stop and remove containers
+#   docker-compose logs -f        # Follow logs
+
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: tinyclaw-office-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-memu}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+      # Initialize pgvector extension on startup
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/01-init-pgvector.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d memu"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tinyclaw-office-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: tinyclaw-office-redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      # Persist Redis data
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tinyclaw-office-network
+
+volumes:
+  postgres_data:
+    name: tinyclaw-office-postgres-data
+    driver: local
+  redis_data:
+    name: tinyclaw-office-redis-data
+    driver: local
+
+networks:
+  tinyclaw-office-network:
+    name: tinyclaw-office-network
+    driver: bridge

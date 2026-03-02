@@ -1,0 +1,79 @@
+{
+  "name": "gondolin-integration",
+  "version": "0.1.0",
+  "description": "Gondolin sandboxed execution service for TinyClaw Office platform",
+  "type": "module",
+  "license": "MIT",
+  "author": "TinyClaw Office Team",
+  "keywords": [
+    "sandbox",
+    "execution",
+    "gondolin",
+    "qemu",
+    "vm",
+    "security"
+  ],
+  "homepage": "https://github.com/TinyAGI/tinyclaw-office#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TinyAGI/tinyclaw-office.git",
+    "directory": "src/gondolin_integration"
+  },
+  "bugs": {
+    "url": "https://github.com/TinyAGI/tinyclaw-office/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "main": "dist/service.js",
+  "types": "dist/service.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/service.d.ts",
+      "import": "./dist/service.js"
+    },
+    "./sandbox": {
+      "types": "./dist/sandbox.d.ts",
+      "import": "./dist/sandbox.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist node_modules",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "start": "node dist/service.js",
+    "dev": "tsx watch service.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "@earendil-works/gondolin": "^0.2.0",
+    "express": "^4.18.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.0",
+    "ts-jest": "^29.1.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "private": true
+}

@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/**)",
+      "Write(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/**)",
+      "Edit(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/**)",
+      "Glob(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/**)",
+      "Grep(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/**)",
+      "Read(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/.auto-claude/specs/004-fix-review-comments-and-respond/**)",
+      "Write(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/.auto-claude/specs/004-fix-review-comments-and-respond/**)",
+      "Edit(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/worktrees/tasks/004-fix-review-comments-and-respond/.auto-claude/specs/004-fix-review-comments-and-respond/**)",
+      "Read(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/**)",
+      "Write(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/**)",
+      "Edit(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/**)",
+      "Glob(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/**)",
+      "Grep(/Users/leonidpetrov/Projects/tinyclaw-office/.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__query-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
