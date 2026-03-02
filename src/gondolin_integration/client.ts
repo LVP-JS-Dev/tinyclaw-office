@@ -36,6 +36,7 @@ import {
   TimeoutError,
   VMCleanupError,
 } from "./sandbox.js";
+import { Logger } from "./logging.js";
 
 // ------------------------------------------------------------------------------
 // Type Definitions
@@ -110,44 +111,6 @@ export interface ClientStatus {
       cpuCount: number;
     };
   };
-}
-
-// ------------------------------------------------------------------------------
-// Structured Logger
-// ------------------------------------------------------------------------------
-
-/**
- * Simple structured logger for JSON output (matches Python logging pattern).
- */
-class Logger {
-  constructor(private readonly context: string) {}
-
-  private log(level: string, message: string, extra?: Record<string, unknown>): void {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      logger: this.context,
-      message,
-      ...extra,
-    };
-    process.stdout.write(JSON.stringify(logEntry) + "\n");
-  }
-
-  info(message: string, extra?: Record<string, unknown>): void {
-    this.log("INFO", message, extra);
-  }
-
-  warn(message: string, extra?: Record<string, unknown>): void {
-    this.log("WARN", message, extra);
-  }
-
-  error(message: string, extra?: Record<string, unknown>): void {
-    this.log("ERROR", message, extra);
-  }
-
-  debug(message: string, extra?: Record<string, unknown>): void {
-    this.log("DEBUG", message, extra);
-  }
 }
 
 // ------------------------------------------------------------------------------

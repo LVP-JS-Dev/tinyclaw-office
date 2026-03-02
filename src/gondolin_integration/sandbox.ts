@@ -23,6 +23,7 @@
  */
 
 import { createHttpHooks, VM } from "@earendil-works/gondolin";
+import { Logger } from "./logging.js";
 
 // ------------------------------------------------------------------------------
 // Type Definitions
@@ -137,44 +138,6 @@ export class VMCleanupError extends SandboxError {
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, details);
     this.name = "VMCleanupError";
-  }
-}
-
-// ------------------------------------------------------------------------------
-// Structured Logger (JSON format)
-// ------------------------------------------------------------------------------
-
-/**
- * Simple structured logger for JSON output (matches Python logging pattern).
- */
-class Logger {
-  constructor(private readonly context: string) {}
-
-  private log(level: string, message: string, extra?: Record<string, unknown>): void {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      logger: this.context,
-      message,
-      ...extra,
-    };
-    process.stdout.write(JSON.stringify(logEntry) + "\n");
-  }
-
-  info(message: string, extra?: Record<string, unknown>): void {
-    this.log("INFO", message, extra);
-  }
-
-  warn(message: string, extra?: Record<string, unknown>): void {
-    this.log("WARN", message, extra);
-  }
-
-  error(message: string, extra?: Record<string, unknown>): void {
-    this.log("ERROR", message, extra);
-  }
-
-  debug(message: string, extra?: Record<string, unknown>): void {
-    this.log("DEBUG", message, extra);
   }
 }
 
