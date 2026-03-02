@@ -15,6 +15,7 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { GondolinClient, createClient, type ExecutionRequest, type ExecutionOptions } from "./client.js";
 import type { ExecutionResult, HealthStatus, ClientStatus } from "./client.js";
+import { Logger } from "./logging.js";
 
 // ------------------------------------------------------------------------------
 // Configuration
@@ -22,44 +23,6 @@ import type { ExecutionResult, HealthStatus, ClientStatus } from "./client.js";
 
 const PORT = parseInt(process.env.GONDOLIN_PORT || "9000", 10);
 const HOST = process.env.GONDOLIN_HOST || "0.0.0.0";
-
-// ------------------------------------------------------------------------------
-// Structured Logger (JSON format)
-// ------------------------------------------------------------------------------
-
-/**
- * Simple structured logger for JSON output (matches Python logging pattern).
- */
-class Logger {
-  constructor(private readonly context: string) {}
-
-  private log(level: string, message: string, extra?: Record<string, unknown>): void {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      logger: this.context,
-      message,
-      ...extra,
-    };
-    process.stdout.write(JSON.stringify(logEntry) + "\n");
-  }
-
-  info(message: string, extra?: Record<string, unknown>): void {
-    this.log("INFO", message, extra);
-  }
-
-  warn(message: string, extra?: Record<string, unknown>): void {
-    this.log("WARN", message, extra);
-  }
-
-  error(message: string, extra?: Record<string, unknown>): void {
-    this.log("ERROR", message, extra);
-  }
-
-  debug(message: string, extra?: Record<string, unknown>): void {
-    this.log("DEBUG", message, extra);
-  }
-}
 
 const logger = new Logger("gondolin_integration.service");
 
